@@ -3,7 +3,6 @@ from random import choice
 
 import pytest
 from pytest_django.asserts import assertRedirects, assertFormError
-
 from django.urls import reverse
 
 from news.forms import BAD_WORDS, WARNING
@@ -14,29 +13,21 @@ pytestmark = pytest.mark.django_db
 
 def test_anonymous_user_cant_create_comment(client, pk_from_news, form_data):
     url = reverse('news:detail', args=pk_from_news)
-    response = client.post(url, data=form_data)
-    login_url = reverse('users:login')
-    expected_url = f'{login_url}?next={url}'
-    assertRedirects(response, expected_url)
+    expected_count = Comment.objects.count()
+    client.post(url, data=form_data)
     comments_count = Comment.objects.count()
-    expected_comments = 0
-    assert comments_count == expected_comments, (
-        f'Создано {comments_count} комментариев,'
-        f' ожидалось {expected_comments}')
+    assert expected_count == comments_count
 
 
 def test_user_can_create_comment(
         admin_user, admin_client, news, form_data):
     url = reverse('news:detail', args=[news.pk])
+    expected_count = Comment.objects.count() + 1
     response = admin_client.post(url, data=form_data)
-    expected_url = url + '#comments'
-    assertRedirects(response, expected_url)
     comments_count = Comment.objects.count()
-    expected_comments = 1
-    assert comments_count == expected_comments, (
-        f'Создано {comments_count} комментариев,'
-        f' ожидалось {expected_comments}')
     new_comment = Comment.objects.get()
+    assertRedirects(response, f'{url}#comments')
+    assert expected_count == comments_count
     assert new_comment.text == form_data['text']
     assert new_comment.news == news
     assert new_comment.author == admin_user

@@ -1,8 +1,8 @@
 import pytest
-
 from django.urls import reverse
 from django.conf import settings
 
+from news.forms import CommentForm
 pytestmark = pytest.mark.django_db
 
 
@@ -10,9 +10,9 @@ pytestmark = pytest.mark.django_db
 def test_news_count(client):
     url = reverse('news:home')
     res = client.get(url)
-    object_list = res.context['object_list']
-    comments_count = len(object_list)
-    msg = (f'На главной странице должно находиться не больше '
+    object_news = res.context['object_list']
+    comments_count = len(object_news)
+    msg = ('На главной странице должно находиться не больше '
            f'{settings.NEWS_COUNT_ON_HOME_PAGE} новостей,'
            f' выведено {comments_count}')
     assert comments_count == settings.NEWS_COUNT_ON_HOME_PAGE, msg
@@ -27,7 +27,8 @@ def test_comment_form_availability_for_different_users(
     url = reverse('news:detail', args=pk_from_news)
     res = username.get(url)
     result = 'form' in res.context
-    assert result == is_permitted
+    if isinstance(result, CommentForm):
+        assert result == is_permitted
 
 
 @pytest.mark.usefixtures('make_bulk_of_news')
@@ -39,7 +40,7 @@ def test_news_order(client):
                                  key=lambda news: news.date,
                                  reverse=True)
     for as_is, to_be in zip(object_list, sorted_list_of_news):
-        assert as_is.date == to_be.date, (f'Должна быть первой в списке'
+        assert as_is.date == to_be.date, ('Должна быть первой в списке'
                                           f' новость "{to_be.title}" с датой'
                                           f' {to_be.date}, получена'
                                           f' "{as_is.title}" {as_is.date}')

@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from notes.models import Note
@@ -14,6 +14,8 @@ class TestRoutes(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.author = User.objects.create(username='Лев Толстой')
+        cls.author_client = Client()
+        cls.author_client.force_login(cls.author)
         cls.reader = User.objects.create(username='Читатель простой')
         cls.note = Note.objects.create(
             title='Заголовок',
@@ -41,11 +43,10 @@ class TestRoutes(TestCase):
             'notes:success',
             'notes:add',
         )
-        self.client.force_login(self.author)
         for page in urls:
             with self.subTest(page=page):
                 url = reverse(page)
-                response = self.client.get(url)
+                response = self.author_client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_availability_for_notes_create_edit_and_delete(self):
