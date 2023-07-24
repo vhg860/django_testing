@@ -2,8 +2,8 @@ from http import HTTPStatus
 from random import choice
 
 import pytest
-from pytest_django.asserts import assertRedirects, assertFormError
 from django.urls import reverse
+from pytest_django.asserts import assertRedirects, assertFormError
 
 from news.forms import BAD_WORDS, WARNING
 from news.models import Comment
@@ -39,7 +39,7 @@ def test_user_cant_use_bad_words(admin_client, pk_from_news):
     response = admin_client.post(url, data=bad_words_data)
     assertFormError(response, form='form', field='text', errors=WARNING)
     comments_count = Comment.objects.count()
-    expected_comments = 0
+    expected_comments = Comment.objects.count()
     assert comments_count == expected_comments
 
 
@@ -58,14 +58,12 @@ def test_author_can_edit_comment(
 def test_author_can_delete_comment(
         author_client, pk_from_news, pk_from_comment):
     url = reverse('news:delete', args=pk_from_comment)
+    expected_comments = Comment.objects.count() - 1
     response = author_client.post(url)
+    comments_count = Comment.objects.count()
     expected_url = reverse('news:detail', args=pk_from_news) + '#comments'
     assertRedirects(response, expected_url)
-    comments_count = Comment.objects.count()
-    expected_comments = 0
-    assert comments_count == expected_comments, (
-        f'Создано {comments_count} комментариев,'
-        f' ожидалось {expected_comments}')
+    assert expected_comments == comments_count
 
 
 def test_other_user_cant_edit_comment(
@@ -86,7 +84,7 @@ def test_other_user_cant_delete_comment(
     response = admin_client.post(url)
     assert response.status_code == HTTPStatus.NOT_FOUND
     comments_count = Comment.objects.count()
-    expected_comments = 1
-    assert comments_count == expected_comments, (
+    expected_comments = Comment.objects.count()
+    assert expected_comments == comments_count, (
         f'Создано {comments_count} комментариев,'
         f' ожидалось {expected_comments}')

@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.conf import settings
 
 from news.forms import CommentForm
+
 pytestmark = pytest.mark.django_db
 
 
@@ -11,7 +12,7 @@ def test_news_count(client):
     url = reverse('news:home')
     res = client.get(url)
     object_news = res.context['object_list']
-    comments_count = len(object_news)
+    comments_count = object_news.count()
     msg = ('На главной странице должно находиться не больше '
            f'{settings.NEWS_COUNT_ON_HOME_PAGE} новостей,'
            f' выведено {comments_count}')
@@ -26,9 +27,9 @@ def test_comment_form_availability_for_different_users(
         pk_from_news, username, is_permitted):
     url = reverse('news:detail', args=pk_from_news)
     res = username.get(url)
-    result = 'form' in res.context
-    if isinstance(result, CommentForm):
-        assert result == is_permitted
+    assert ('form' in res.context) == is_permitted
+    if is_permitted is True:
+        assert isinstance(res.context['form'], CommentForm)
 
 
 @pytest.mark.usefixtures('make_bulk_of_news')

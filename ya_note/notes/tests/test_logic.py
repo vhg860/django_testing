@@ -3,17 +3,17 @@ from http import HTTPStatus
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+from pytils.translit import slugify
 
 from notes.forms import WARNING
 from notes.models import Note
-
-from pytils.translit import slugify
 
 User = get_user_model()
 
 
 class TestNoteCreation(TestCase):
     ADD_NOTE_URL = reverse('notes:add')
+    NOTE_SUCCESS = 'notes:success'
 
     @classmethod
     def setUpTestData(cls):
@@ -29,9 +29,10 @@ class TestNoteCreation(TestCase):
         return f'Текущее значение "{current}", Ожидалось "{expected}"'
 
     def test_user_can_create_note(self):
-        self.client.force_login(self.author)
-        response = self.client.post(self.ADD_NOTE_URL, data=self.form_data)
-        self.assertRedirects(response, reverse('notes:success'))
+        response = self.author_client.post(
+            self.ADD_NOTE_URL, data=self.form_data
+        )
+        self.assertRedirects(response, reverse(self.NOTE_SUCCESS))
         expected_notes_count = 1
         current_notes_count = Note.objects.count()
         self.assertEqual(current_notes_count, expected_notes_count,
@@ -56,18 +57,16 @@ class TestNoteCreation(TestCase):
                                            expected_notes_count))
 
     def test_slug_must_be_unique(self):
-        self.client.force_login(self.author)
-        self.client.post(self.ADD_NOTE_URL, data=self.form_data)
-        res = self.client.post(self.ADD_NOTE_URL, data=self.form_data)
+        self.author_client.post(self.ADD_NOTE_URL, data=self.form_data)
+        res = self.author_client.post(self.ADD_NOTE_URL, data=self.form_data)
         warn = self.form_data['slug'] + WARNING
         self.assertFormError(res, form='form', field='slug', errors=warn)
 
     def test_empty_slug(self):
-        self.client.force_login(self.author)
         del self.form_data['slug']
-        res = self.client.post(self.ADD_NOTE_URL,
-                               data=self.form_data)
-        self.assertRedirects(res, reverse('notes:success'))
+        res = self.author_client.post(self.ADD_NOTE_URL,
+                                      data=self.form_data)
+        self.assertRedirects(res, reverse(self.NOTE_SUCCESS))
         expected_notes_count = 1
         current_notes_count = Note.objects.count()
         self.assertEqual(current_notes_count, expected_notes_count,
@@ -86,6 +85,7 @@ class TestNoteEditDelete(TestCase):
     NEW_NOTE_TITLE = 'new title'
     NOTE_TEXT = 'text'
     NEW_NOTE_TEXT = 'new text'
+    NOTE_SUCCESS = 'notes:success'
 
     @classmethod
     def setUpTestData(cls):
@@ -123,7 +123,7 @@ class TestNoteEditDelete(TestCase):
 
     def test_author_can_delete_note(self):
         res = self.author_client.post(self.delete_note_url)
-        self.assertRedirects(res, reverse('notes:success'))
+        self.assertRedirects(res, reverse(self.NOTE_SUCCESS))
         self.assertEqual(Note.objects.count(), 0)
 
     def test_other_user_cant_delete_note(self):

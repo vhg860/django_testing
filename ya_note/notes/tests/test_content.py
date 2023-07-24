@@ -16,6 +16,8 @@ class TestContent(TestCase):
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
         cls.reader = User.objects.create(username='Читатель простой')
+        cls.reader_client = Client()
+        cls.reader_client.force_login(cls.reader)
         cls.note = Note.objects.create(
             title='Заголовок',
             text='Текст',
@@ -24,18 +26,15 @@ class TestContent(TestCase):
         )
 
     def test_notes_list_for_different_users(self):
-        users_notes = (
-            (self.author, True),
-            (self.reader, False),
+        users = (
+            (self.author_client, True),
+            (self.reader_client, False),
         )
         url = reverse('notes:list')
-        for user, note_in_list in users_notes:
-            self.client.force_login(user)
-            with self.subTest(user=user.username, note_in_list=note_in_list):
-                response = self.client.get(url)
-                note_in_object_list = self.note in response.context[
-                    'object_list']
-                self.assertEqual(note_in_object_list, note_in_list)
+        for user, value in users:
+            with self.subTest(user=user):
+                object_list = user.get(url).context['object_list']
+                self.assertTrue((self.note in object_list) is value)
 
     def test_pages_contains_form(self):
         urls = (
@@ -45,5 +44,6 @@ class TestContent(TestCase):
         for page, args in urls:
             with self.subTest(page=page):
                 url = reverse(page, args=args)
-                response = self.author_client.get(url).context['form']
-                self.assertIsInstance(response, NoteForm)
+                response = self.author_client.get(url)
+                assert ('form' in response.context)
+                self.assertIsInstance(response.context['form'], NoteForm)
